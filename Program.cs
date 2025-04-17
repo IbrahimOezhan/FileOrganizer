@@ -1,4 +1,5 @@
 ﻿using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace ConsoleApp1
@@ -12,42 +13,40 @@ namespace ConsoleApp1
 
             Console.WriteLine("Process executing in " + path);
 
-            List<EndingPairs> pairs =
-            [
-                new EndingPairs("png","Images"),
-                new EndingPairs("jpg","Images"),
-                new EndingPairs("gif","Images"),
-                new EndingPairs("jpeg","Images"),
-                new EndingPairs("webp","Images"),
-                new EndingPairs("PNG", "Images"),
-                new EndingPairs("ico", "Images"),
-                new EndingPairs("psd", "Images"),
+            string documentsDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-                new EndingPairs("7z","Archieves"),
-                new EndingPairs("zip","Archieves"),
-                new EndingPairs("rar", "Archieves"),
-                new EndingPairs("7zip", "Archieves"),
+            string configName = "IFO-Config.txt";
 
-                new EndingPairs("mp4", "Videos"),
-                new EndingPairs("mkv", "Videos"),
+            string fullPath = Path.Combine(documentsDir, configName);
 
-                new EndingPairs("pdf", "Documents"),
+            Config config = new Config();
 
-                new EndingPairs("mp3", "Music"),
-                new EndingPairs("wav", "Music"),
+            if (!File.Exists(fullPath))
+            {
+                Console.WriteLine("Config file not found, creating new one");
+                File.Create(fullPath).Close();
+                using (StreamWriter writer = new(fullPath))
+                {
+                    writer.Write(JsonSerializer.Serialize(config));
+                }
+            }
+            else
+            {
+                Console.WriteLine("Config file found, loading config");
+                string fileContent = File.ReadAllText(fullPath);
+                config = JsonSerializer.Deserialize<Config>(fileContent);
+            }
 
-                new EndingPairs("exe", "Applications"),
-                new EndingPairs("", "Other"),
-            ];
 
-            List<string> tabuDirectories = pairs.Select(x => x.folder).ToList();
+
+            List<string> tabuDirectories = config.pairs.Select(x => x.folder).ToList();
 
             MoveDirectories(path, tabuDirectories);
-            MoveFiles(processPath, path, pairs);
+            MoveFiles(processPath, path, config.pairs);
 
             while (true)
             {
-                
+
             }
         }
 
@@ -80,12 +79,6 @@ namespace ConsoleApp1
                 {
                     Console.WriteLine("Error: " + e.Message);
                 }
-
-                if (!(pair.folder == null || string.IsNullOrEmpty(pair.folder)))
-                {
-                    string dir = Path.Combine(filePath, pair.folder);
-                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                }
             }
         }
 
@@ -96,7 +89,7 @@ namespace ConsoleApp1
             Console.Write("File " + fileName + " with ending " + ending);
 
             // If pair exists
-            if (!(pair.folder == null || string.IsNullOrEmpty(pair.folder)))
+            if (pair != null)
             {
                 Console.WriteLine(" fits the pair: " + pair.ending + " " + pair.folder);
                 dir = Path.Combine(path, pair.folder);
@@ -161,11 +154,57 @@ namespace ConsoleApp1
                 }
             }
         }
-
-        private struct EndingPairs
+        public class Config
         {
-            public string ending;
-            public string folder;
+            public List<EndingPairs> pairs { get; set; } = new List<EndingPairs>
+    {
+        new EndingPairs("png", "Images"),
+        new EndingPairs("jpg", "Images"),
+        new EndingPairs("gif", "Images"),
+        new EndingPairs("jpeg", "Images"),
+        new EndingPairs("webp", "Images"),
+        new EndingPairs("PNG", "Images"),
+        new EndingPairs("ico", "Images"),
+        new EndingPairs("psd", "Images"),
+
+        new EndingPairs("7z", "Archives"),
+        new EndingPairs("zip", "Archives"),
+        new EndingPairs("rar", "Archives"),
+        new EndingPairs("7zip", "Archives"),
+
+        new EndingPairs("mp4", "Videos"),
+        new EndingPairs("mkv", "Videos"),
+
+        new EndingPairs("pdf", "Documents"),
+        new EndingPairs("docx", "Documents"),
+        new EndingPairs("csv", "Documents"),
+
+        new EndingPairs("mp3", "Music"),
+        new EndingPairs("wav", "Music"),
+        new EndingPairs("ogg", "Music"),
+
+        new EndingPairs("exe", "Applications"),
+        new EndingPairs("", "Other"),
+        new EndingPairs("sty", "Text"),
+        new EndingPairs("txt", "Text"),
+        new EndingPairs("json", "Text"),
+        new EndingPairs("log", "Text"),
+        new EndingPairs("blend", "Models"),
+        new EndingPairs("blend1", "Models"),
+        new EndingPairs("stl", "Models"),
+    };
+        }
+
+        public class EndingPairs
+        {
+            public string ending { get; set; }
+            public string folder { get; set; }
+
+            // Parameterless constructor is required for deserialization
+            public EndingPairs()
+            {
+       
+            }
 
             public EndingPairs(string ending, string folder)
             {
@@ -173,5 +212,6 @@ namespace ConsoleApp1
                 this.folder = folder;
             }
         }
+
     }
 }
